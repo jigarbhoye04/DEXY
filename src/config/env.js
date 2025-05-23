@@ -4,6 +4,8 @@ dotenv.config();
 const config = {
     discordToken: process.env.DISCORD_TOKEN,
     geminiApiKey: process.env.GEMINI_API_KEY,
+    clientId: process.env.CLIENT_ID, // Added
+    guildId: process.env.GUILD_ID,   // Added
 };
 
 // Validate essential configuration
@@ -16,4 +18,4 @@ if (!config.geminiApiKey) {
     process.exit(1);
 }
 
-export default config; 
+export default config;

@@ -17,5 +17,13 @@ if (!config.geminiApiKey) {
     console.error("Error: GEMINI_API_KEY is not defined in .env file.");
     process.exit(1);
 }
+if(!config.clientId) {
+    console.error("Error: CLIENT_ID is not defined in .env file.");
+    process.exit(1);
+}
+if(!config.guildId) {
+    console.error("Error: GUILD_ID is not defined in .env file.");
+    process.exit(1);
+}
 
 export default config;

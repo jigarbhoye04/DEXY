@@ -1,6 +1,6 @@
 //run once to register/update commands.
 import { REST, Routes } from "discord.js";
-import config from "../src/config/env.js"; 
+import config from "../src/config/env.js";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 
 const commands = [];
 // Grab all the command files from the commands directory you created earlier
-const commandsPath = path.join(__dirname, "..", "src", "commands"); 
+const commandsPath = path.join(__dirname, "../src", "commands");
 const commandFiles = fs
    .readdirSync(commandsPath)
    .filter((file) => file.endsWith(".js"));
@@ -18,8 +18,8 @@ const commandFiles = fs
 // Grab the SlashCommandBuilder#toJSON() output of each command's data for deployment
 for (const file of commandFiles) {
    const filePath = path.join(commandsPath, file);
-   const fileUrl = path.toNamespacedPath(filePath);
-   const command = (await import(`file://${fileUrl}`)).default;
+   // Use filePath directly for file URL
+   const command = (await import(`file://${filePath}`)).default;
    if (command && "data" in command) {
       commands.push(command.data.toJSON());
       console.log(`Prepared command for deployment: ${command.data.name}`);
@@ -62,7 +62,6 @@ const rest = new REST({ version: "10" }).setToken(config.discordToken);
          `Successfully reloaded ${data.length} application (/) commands for guild ${process.env.GUILD_ID}.`
       );
    } catch (error) {
-      // And of course, make sure you catch and log any errors!
       console.error(error);
    }
 })();

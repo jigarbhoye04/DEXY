@@ -131,4 +131,127 @@ Provide ONLY the JSON object in your response. Do not include any other text or 
    }
 }
 
-export { generateGeminiSummary, judgeDebateWithGemini };
+/**
+ * Explains a given code snippet using the Gemini API.
+ * @param {string} codeSnippet - The code snippet to explain.
+ * @returns {Promise<string>} The explanation text from Gemini.
+ * @throws {Error} If the API call fails or returns no text.
+ */
+async function explainCodeWithGemini(codeSnippet) {
+   if (!codeSnippet || codeSnippet.trim() === "") {
+      return "No code provided to explain.";
+   }
+
+   // Detect language or assume generic if not easily detectable.
+   // For a simple MVP, we can let Gemini infer or specify common ones.
+   const prompt = `
+You are a helpful and experienced software development coach.
+Please explain the following code snippet in plain English.
+Break down what it does, its purpose, and how it works.
+If possible, identify the programming language.
+Be clear, concise, and beginner-friendly.
+
+Code Snippet:
+\`\`\`
+${codeSnippet}
+\`\`\`
+
+Explanation:
+`;
+
+   try {
+      console.log(
+         `[GeminiService] Sending code snippet for explanation: ${codeSnippet.substring(
+            0,
+            100
+         )}...`
+      );
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const explanationText = response.text();
+
+      if (!explanationText || explanationText.trim() === "") {
+         console.error(
+            "[GeminiService] Gemini API returned an empty explanation for the code."
+         );
+         throw new Error("Gemini API returned an empty explanation.");
+      }
+      return explanationText;
+   } catch (error) {
+      console.error(
+         "[GeminiService] Error calling Gemini API for code explanation:",
+         error
+      );
+      throw new Error(
+         `Failed to get code explanation from Gemini API. Details: ${error.message}`
+      );
+   }
+}
+
+/**
+ * Explains a given GitHub issue using the Gemini API.
+ * @param {string} issueTitle - The title of the GitHub issue.
+ * @param {string} issueBody - The body/description of the GitHub issue.
+ * @returns {Promise<string>} The explanation text from Gemini.
+ * @throws {Error} If the API call fails or returns no text.
+ */
+async function explainGitHubIssueWithGemini(issueTitle, issueBody) {
+   if (!issueTitle && !issueBody) {
+      return "No issue title or body provided to explain.";
+   }
+
+   const prompt = `
+You are a helpful software development assistant.
+A user has provided the following GitHub issue details. Please explain this issue in plain English.
+Focus on:
+1. What is the core problem or feature request being described?
+2. What might be the context or impact of this issue?
+3. What general steps or considerations might be involved in addressing it?
+
+Keep the explanation clear, concise, and understandable.
+
+GitHub Issue Title:
+${issueTitle}
+
+GitHub Issue Body:
+---
+${issueBody}
+---
+
+Explanation:
+`;
+
+   try {
+      console.log(
+         `[GeminiService] Sending GitHub issue for explanation. Title: ${issueTitle}`
+      );
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      const explanationText = response.text();
+
+      if (!explanationText || explanationText.trim() === "") {
+         console.error(
+            "[GeminiService] Gemini API returned an empty explanation for the GitHub issue."
+         );
+         throw new Error(
+            "Gemini API returned an empty explanation for the GitHub issue."
+         );
+      }
+      return explanationText;
+   } catch (error) {
+      console.error(
+         "[GeminiService] Error calling Gemini API for GitHub issue explanation:",
+         error
+      );
+      throw new Error(
+         `Failed to get GitHub issue explanation from Gemini API. Details: ${error.message}`
+      );
+   }
+}
+
+export {
+   generateGeminiSummary,
+   judgeDebateWithGemini,
+   explainCodeWithGemini,
+   explainGitHubIssueWithGemini,
+};

@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- (Future changes for Phase 5: Dev Coach and beyond)
+- (Future changes for Phase 6: AI Matchmaker and beyond)
 
 ### Changed
 - 
@@ -17,7 +17,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 
 
 ---
-## [0.4.0] - YYYY-MM-DD - Debate Referee Completion
+## [0.5.0] - 2025-05-26 - Dev Coach Completion
+
+This version marks the completion of the Dev Coach module.
+
+### Added
+- **Phase 5: Dev Coach**
+    - `src/commands/devCoach.js`:
+        - Main command `/devcoach` with subcommands `explaincode` and `explainissue`. (Task 5.1, 5.3)
+        - `/devcoach explaincode` takes a code snippet string and uses Gemini to provide an explanation. (Task 5.2)
+        - `/devcoach explainissue` takes a GitHub issue URL, fetches issue details, and uses Gemini to explain the issue. (Task 5.3)
+        - Uses Discord embeds for displaying explanations for both code and GitHub issues.
+    - `src/services/geminiService.js`:
+        - `explainCodeWithGemini(codeSnippet)` function to get explanations for arbitrary code. (Task 5.2)
+        - `explainGitHubIssueWithGemini(issueTitle, issueBody)` function to get explanations for GitHub issue content. (Task 5.3)
+    - `src/services/githubService.js`: (Task 5.3)
+        - `parseGitHubIssueUrl(issueUrl)` to extract owner, repo, and issue number.
+        - `getGitHubIssueDetails(owner, repo, issueNumber)` to fetch issue title and body via GitHub API using `axios`.
+        - Basic error handling for GitHub API requests (404s, 403s).
+
+### Changed
+- **Commands**:
+    - The `/explain` command was refactored into `/devcoach explaincode` as part of grouping Dev Coach functionalities under a main `/devcoach` command. (Task 5.3)
+
+### Fixed
+- 
+
+---
+## [0.4.0] - 2025-05-26 - Debate Referee Completion
 
 This version marks the completion of the Debate Referee module.
 

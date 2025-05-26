@@ -41,10 +41,94 @@ async function generateGeminiSummary(textToSummarize) {
             "Invalid Gemini API Key. Please check your .env file."
          );
       }
+      throw new Error(`Failed to generate summary. Details: ${error.message}`);
+   }
+}
+
+/**
+ * Judges a debate using the Gemini API.
+ * @param {{id: string, name: string}} debater1 - Info for debater 1.
+ * @param {{id: string, name: string}} debater2 - Info for debater 2.
+ * @param {Array<object>} statementsDebater1 - Array of statement objects for debater 1.
+ * @param {Array<object>} statementsDebater2 - Array of statement objects for debater 2.
+ * @returns {Promise<object>} The parsed JSON judgment from Gemini.
+ */
+async function judgeDebateWithGemini(
+   debater1,
+   debater2,
+   statementsDebater1,
+   statementsDebater2
+) {
+   let formattedTranscript = "";
+   // Combine and sort all statements by timestamp to create a chronological transcript
+   const allStatements = [
+      ...statementsDebater1.map((s) => ({ ...s, debaterName: debater1.name })),
+      ...statementsDebater2.map((s) => ({ ...s, debaterName: debater2.name })),
+   ].sort((a, b) => a.timestamp - b.timestamp);
+
+   allStatements.forEach((statement) => {
+      formattedTranscript += `${statement.debaterName}: ${statement.content}\n`;
+   });
+
+   if (formattedTranscript.trim() === "") {
+      return { error: "No statements were made in this debate to judge." };
+   }
+
+   const prompt = `
+You are an impartial and analytical debate judge.
+A debate has concluded between two participants: Debater 1 (${debater1.name}) and Debater 2 (${debater2.name}).
+Below is their debate transcript:
+
+Debate Transcript:
+---
+${formattedTranscript}
+---
+
+Based on the transcript, please provide your judgment.
+Your response MUST be a JSON object with the following keys:
+- "summary_debater1": "A brief summary of ${debater1.name}'s main arguments."
+- "summary_debater2": "A brief summary of ${debater2.name}'s main arguments."
+- "strengths_debater1": "Key strengths of ${debater1.name}'s performance."
+- "weaknesses_debater1": "Areas for improvement for ${debater1.name}."
+- "strengths_debater2": "Key strengths of ${debater2.name}'s performance."
+- "weaknesses_debater2": "Areas for improvement for ${debater2.name}."
+- "overall_assessment": "Your overall thoughts on the debate and who presented more compelling arguments."
+- "winner_name": "A string indicating the winner ('${debater1.name}', '${debater2.name}', or 'Draw')."
+- "score_debater1": An overall score for ${debater1.name} (0-10, can be float).
+- "score_debater2": An overall score for ${debater2.name} (0-10, can be float).
+- "reason_for_winner": "A brief justification for your choice of winner."
+
+Ensure your analysis is fair and based solely on the provided statements.
+Provide ONLY the JSON object in your response. Do not include any other text or markdown formatting like \`\`\`json.
+`;
+
+   try {
+      console.log(
+         `[GeminiService] Sending debate transcript for judging. Transcript length: ${formattedTranscript.length}`
+      );
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      let rawText = response.text();
+
+      // Attempt to parse the JSON
+      const judgment = JSON.parse(rawText);
+      console.log(
+         "[GeminiService] Successfully parsed debate judgment from Gemini."
+      );
+      return judgment;
+   } catch (error) {
+      console.error(
+         "[GeminiService] Error calling Gemini API for debate judging or parsing its response:",
+         error
+      );
+      console.error(
+         "[GeminiService] Raw response that failed parsing (if available):",
+         error.rawResponse || rawText
+      );
       throw new Error(
-         `Failed to generate summary. Details: ${error.message}`
+         `Failed to judge debate using Gemini API. Details: ${error.message}`
       );
    }
 }
 
-export { generateGeminiSummary };
+export { generateGeminiSummary, judgeDebateWithGemini };

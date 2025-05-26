@@ -4,6 +4,8 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 
+import { getActiveDebate, addDebateStatement } from "./state/memoryStore.js";
+
 // --- Command Loading ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -37,11 +39,12 @@ for (const file of commandFiles) {
    }
 }
 
-// ---Event Handlers ---
-client.once(Events.ClientReady, (x) => {
+// --- Event Handlers ---
+client.once(Events.ClientReady, (c) => {
+   // c is the client instance
    console.log(`Ready!`);
-   if (x.user) {
-      console.log(`Logged in as ${x.user.tag}`);
+   if (c.user) {
+      console.log(`Logged in as ${c.user.tag}`);
    }
 });
 
@@ -55,7 +58,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       );
       await interaction.reply({
          content: "Error: Command not found.",
-         ephemeral: true,
+         flags: [MessageFlags.Ephemeral] 
       });
       return;
    }
@@ -67,16 +70,51 @@ client.on(Events.InteractionCreate, async (interaction) => {
          `Error executing command ${interaction.commandName}:`,
          error
       );
+      // interaction.replied or interaction.deferred should exists before trying to use followUp
       if (interaction.replied || interaction.deferred) {
          await interaction.followUp({
             content: "There was an error while executing this command!",
-            ephemeral: true,
+            flags: [MessageFlags.Ephemeral]
          });
       } else {
          await interaction.reply({
             content: "There was an error while executing this command!",
-            ephemeral: true,
+            flags: [MessageFlags.Ephemeral]
          });
+      }
+   }
+});
+
+// event handler for MessageCreate to capture debate statements
+client.on(Events.MessageCreate, async (message) => {
+   // Ignore messages from bots or system messages
+   if (message.author.bot || message.system) return;
+
+   const channelId = message.channelId;
+   const authorId = message.author.id;
+
+   // Check if there's an active debate in this channel
+   const debate = getActiveDebate(channelId);
+
+   if (debate) {
+      // Check if the message author is one of the debaters
+      if (authorId === debate.debater1Id || authorId === debate.debater2Id) {
+         // Record the statement
+         const recorded = addDebateStatement(
+            channelId,
+            authorId,
+            message.content
+         );
+         if (recorded) {
+            // react to the message to indicate it's been recorded
+            try {
+               await message.react("✍️");
+            } catch (reactError) {
+               console.warn(
+                  `Failed to react to message ${message.id}: ${reactError.message}. Missing permissions?`
+               );
+            }
+         }
       }
    }
 });

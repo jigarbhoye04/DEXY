@@ -4,7 +4,11 @@ import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
 
-import { getActiveDebate, addDebateStatement } from "./state/memoryStore.js";
+import {
+   getActiveDebate,
+   addDebateStatement,
+   getWatchedChannelConfig,
+} from "./state/memoryStore.js";
 
 // --- Command Loading ---
 const __filename = fileURLToPath(import.meta.url);
@@ -58,7 +62,7 @@ client.on(Events.InteractionCreate, async (interaction) => {
       );
       await interaction.reply({
          content: "Error: Command not found.",
-         flags: [MessageFlags.Ephemeral] 
+         flags: [MessageFlags.Ephemeral],
       });
       return;
    }
@@ -74,12 +78,12 @@ client.on(Events.InteractionCreate, async (interaction) => {
       if (interaction.replied || interaction.deferred) {
          await interaction.followUp({
             content: "There was an error while executing this command!",
-            flags: [MessageFlags.Ephemeral]
+            flags: [MessageFlags.Ephemeral],
          });
       } else {
          await interaction.reply({
             content: "There was an error while executing this command!",
-            flags: [MessageFlags.Ephemeral]
+            flags: [MessageFlags.Ephemeral],
          });
       }
    }
@@ -116,6 +120,14 @@ client.on(Events.MessageCreate, async (message) => {
             }
          }
       }
+   }
+
+   // --- Event Commentator Handling ---
+   const watchedChannelConf = getWatchedChannelConfig(channelId);
+   if (watchedChannelConf) {
+      console.log(
+         `[Commentator] Message in watched channel (${channelId}) by ${message.author.username}: "${message.content}"`
+      );
    }
 });
 

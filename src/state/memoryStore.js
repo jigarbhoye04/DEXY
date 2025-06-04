@@ -56,4 +56,66 @@ function endDebate(channelId) {
     return null;
 }
 
-export { startDebate, getActiveDebate, addDebateStatement, endDebate };
+/**
+ * start to watch a channel for time to time commentary-logs.
+ * @param {string} channelId - id of channel
+ * @param {string} [style='default'] -commentary style.
+ * @returns {boolean} - true if the channel is being watched, false if already watching.
+ */
+
+
+// --- Event Commentator State ---
+const watchedChannels = new Map(); // channelId -> { style: 'default', lastCommentary: timestamp }
+
+function watchChannel(channelId, style = 'default') {
+    if (watchedChannels.has(channelId)) {
+        return false;
+    }
+    watchedChannels.set(channelId,{
+        style: style,
+        lastCommentary: Date.now()
+    });
+    console.log(`[MemoryStore] Now watching channel ${channelId} with style "${style}"`);
+    return true;
+}
+
+
+
+/**
+ * Stops watching a channel.
+ * @param {string} channelId - The ID of the channel to stop watching.
+ * @returns {boolean} True if watching stopped, false if not being watched.
+ */
+
+function unwatchChannel(channelId) {
+    if (watchedChannels.has(channelId)) {
+        watchedChannels.delete(channelId);
+        console.log(`[MemoryStore] Stopped watching channel ${channelId}`);
+        return true;
+    }
+    return false;
+}
+
+
+/**
+ * Checks if a channel is being watched by the event commentator.
+ * @param {string} channelId - The ID of the channel.
+ * @returns {object | undefined} The watch config if watched, otherwise undefined.
+ */
+function getWatchedChannelConfig(channelId) {
+    return watchedChannels.get(channelId);
+}
+
+/**
+ * Updates the last commentary timestamp for a watched channel.
+ * @param {string} channelId
+ */
+function updateLastCommentaryTime(channelId) {
+    if (watchedChannels.has(channelId)) {
+        watchedChannels.set(channelId, { ...watchedChannels.get(channelId), lastCommentary: Date.now() });
+    }
+}
+
+
+
+export { startDebate, getActiveDebate, addDebateStatement, endDebate, watchChannel, unwatchChannel, getWatchedChannelConfig, updateLastCommentaryTime, watchedChannels, activeDebates };

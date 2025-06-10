@@ -7,7 +7,7 @@ if (!config.geminiApiKey) {
 
 const genAI = new GoogleGenerativeAI(config.geminiApiKey);
 const model = genAI.getGenerativeModel({
-   model: "gemini-2.5-flash-preview-05-20",
+   model: "gemini-2.0-flash",
 });
 
 /**
@@ -278,7 +278,7 @@ async function generateComments(
    } else if (commentaryStyle.toLowerCase() === "excited") {
       styleInstruction = "Provide an excited and enthusiastic commentary";
    } else {
-      styleInstruction = `Provide brief and engaging real-time commentary in a ${commentaryStyle} style. Keep it under 20 words.`;
+      styleInstruction = `Provide brief and engaging real-time commentary in a ${commentaryStyle} style. Keep it under 10 words.`;
    }
 
    const prompt = `
@@ -289,6 +289,7 @@ Based on this message and your style, generate a short, engaging piece of commen
 ${styleInstruction}
 Do not directly quote the user or say "The user said". Just provide your commentary.
 If the message is mundane or doesn't warrant commentary, output the exact phrase "NO_COMMENT".
+NOTE: No more than 10-15 words in your commentary.
 `;
 
    try {

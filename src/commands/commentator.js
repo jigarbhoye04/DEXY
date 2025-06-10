@@ -1,4 +1,4 @@
-import { PermissionFlagsBits, SlashCommandBuilder } from "discord.js";
+import { PermissionFlagsBits, SlashCommandBuilder,MessageFlags } from "discord.js";
 import {
    watchChannel,
    unwatchChannel,
@@ -44,7 +44,7 @@ export default {
       const channelId = interaction.channelId;
 
       await interaction.deferReply({
-         flags: [InteractionFlags.Ephemeral],
+         flags: [MessageFlags.Ephemeral],
       });
 
       if (subcommand === "watch") {

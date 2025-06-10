@@ -12,7 +12,7 @@ import {
 } from "./state/memoryStore.js";
 import { generateComments } from "./services/geminiService.js";
 
-const COMMENTARY_COOLDOWN_MS = 20000; //20s
+const COMMENTARY_COOLDOWN_MS = 60000; //60s
 
 // --- Command Loading ---
 const __filename = fileURLToPath(import.meta.url);
@@ -144,7 +144,7 @@ client.on(Events.MessageCreate, async (message) => {
             watchedChannelConf.style
          );
          if (commentary) {
-            await message.channel.send(`🎙️ **Dexy's Take:** ${commentary}`);
+            await message.channel.send(`${commentary}`);
             updateLastCommentaryTime(channelId);
          }
       } catch (error) {

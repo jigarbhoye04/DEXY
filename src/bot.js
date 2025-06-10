@@ -8,7 +8,11 @@ import {
    getActiveDebate,
    addDebateStatement,
    getWatchedChannelConfig,
+   updateLastCommentaryTime,
 } from "./state/memoryStore.js";
+import { generateComments } from "./services/geminiService.js";
+
+const COMMENTARY_COOLDOWN_MS = 20000; //20s
 
 // --- Command Loading ---
 const __filename = fileURLToPath(import.meta.url);
@@ -125,9 +129,34 @@ client.on(Events.MessageCreate, async (message) => {
    // --- Event Commentator Handling ---
    const watchedChannelConf = getWatchedChannelConfig(channelId);
    if (watchedChannelConf) {
-      console.log(
-         `[Commentator] Message in watched channel (${channelId}) by ${message.author.username}: "${message.content}"`
-      );
+      const now = Date.now();
+      if (
+         now - watchedChannelConf.lastCommentaryTime <
+         COMMENTARY_COOLDOWN_MS
+      ) {
+         // still in cooldown period, skip commentary
+         return;
+      }
+      try {
+         const commentary = await generateComments(
+            message.content,
+            message.author.username,
+            watchedChannelConf.style
+         );
+         if (commentary) {
+            await message.channel.send(`🎙️ **Dexy's Take:** ${commentary}`);
+            updateLastCommentaryTime(channelId);
+         }
+      } catch (error) {
+         console.error(
+            `Error generating commentary for message ${message.id}:`,
+            error
+         );
+         // await message.channel.send({
+         //    content: "There was an error generating commentary for this message.",
+         //    flags: [MessageFlags.Ephemeral],
+         // });
+      }
    }
 });
 

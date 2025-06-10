@@ -249,9 +249,78 @@ Explanation:
    }
 }
 
+/**
+ * Generates event commentary for a given message
+ * @param {string} originalMessageContent
+ * @param {string} messageAuthorUsername
+ * @param {string} commentaryStyle (e.g., 'funny', 'serious', 'analytical', 'excited').
+ * @returns {Promise<string|null>}
+ * @throws {Error}
+ */
+
+async function generateComments(
+   originalMessageContent,
+   messageAuthorUsername,
+   commentaryStyle
+) {
+   if (!originalMessageContent || originalMessageContent.trim().length < 5) {
+      return null;
+   }
+
+   let styleInstruction =
+      "Provide a brief and engaging, and insightful realtime commentary (NOTE: it should be under 20 words.)";
+   if (commentaryStyle.toLowerCase() === "funny") {
+      styleInstruction = "Provide a humorous and witty commentary";
+   } else if (commentaryStyle.toLowerCase() === "serious") {
+      styleInstruction = "Provide a serious and straightforward commentary";
+   } else if (commentaryStyle.toLowerCase() === "analytical") {
+      styleInstruction = "Provide an analytical and detailed commentary";
+   } else if (commentaryStyle.toLowerCase() === "excited") {
+      styleInstruction = "Provide an excited and enthusiastic commentary";
+   } else {
+      styleInstruction = `Provide brief and engaging real-time commentary in a ${commentaryStyle} style. Keep it under 20 words.`;
+   }
+
+   const prompt = `
+You are a Human commentator. Your current commentary style is: ${commentaryStyle}.
+A user named "${messageAuthorUsername}" just said: "${originalMessageContent}"
+
+Based on this message and your style, generate a short, engaging piece of commentary.
+${styleInstruction}
+Do not directly quote the user or say "The user said". Just provide your commentary.
+If the message is mundane or doesn't warrant commentary, output the exact phrase "NO_COMMENT".
+`;
+
+   try {
+      // console.log(`[GeminiService] Generating commentary for message: ${originalMessageContent.substring(0,50)}...`);
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      let commentaryText = response.text().trim();
+
+      if (
+         !commentaryText ||
+         commentaryText.trim() === "" ||
+         commentaryText.toUpperCase() === "NO_COMMENT"
+      ) {
+         return null;
+      }
+
+      return commentaryText.trim();
+   } catch (error) {
+      console.error(
+         "[GeminiService] Error generating commentary for message:",
+         error
+      );
+      throw new Error(
+         `Failed to generate commentary. Details: ${error.message}`
+      );
+   }
+}
+
 export {
    generateGeminiSummary,
    judgeDebateWithGemini,
    explainCodeWithGemini,
    explainGitHubIssueWithGemini,
+   generateComments,
 };

@@ -1,39 +1,72 @@
-import { PermissionFlagsBits, SlashCommandBuilder,MessageFlags } from "discord.js";
+import {
+   SlashCommandBuilder,
+   MessageFlags,
+   PermissionFlagsBits,
+   EmbedBuilder,
+} from "discord.js";
 import {
    watchChannel,
    unwatchChannel,
    getWatchedChannelConfig,
 } from "../state/memoryStore.js";
+import { generateStoryRecap } from "../services/geminiService.js";
+
+const MAX_RECAP_MESSAGES = 50;
+const MAX_EMBED_DESCRIPTION = 4000;
+
+function truncateText(text, maxLength = MAX_EMBED_DESCRIPTION) {
+   if (typeof text !== "string") text = String(text);
+   if (text.length > maxLength) {
+      return text.substring(0, maxLength - 3) + "...";
+   }
+   return text;
+}
 
 export default {
    data: new SlashCommandBuilder()
       .setName("commentator")
-      .setDescription("Manages the event in for a channel.")
-      .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels) //only those who can manage channels.
+      .setDescription("Manages event commentary for a channel.")
+      .setDefaultMemberPermissions(PermissionFlagsBits.ManageChannels)
       .addSubcommand((subcommand) =>
          subcommand
             .setName("watch")
-            .setDescription("Starts watching a channel for event commentary.")
+            .setDescription("Starts event commentary in this channel.")
             .addStringOption((option) =>
                option
                   .setName("style")
                   .setDescription(
-                     "The commentary style (e.g., funny, serious, analytical). Default: default"
+                     "The commentary style (e.g., funny, serious). Default: default"
                   )
                   .setRequired(false)
-                  .setAutocomplete(true)
             )
       )
       .addSubcommand((subcommand) =>
          subcommand
             .setName("unwatch")
-            .setDescription("Stops watching a channel for event commentary.")
+            .setDescription("Stops event commentary in this channel.")
       )
       .addSubcommand((subcommand) =>
          subcommand
             .setName("status")
             .setDescription(
-               "Checks if the channel is being watched for event commentary."
+               "Checks if event commentary is active in this channel."
+            )
+      )
+      .addSubcommand((subcommand) =>
+         subcommand
+            .setName("recap")
+            .setDescription(
+               `Generates a story-style recap of up to ${MAX_RECAP_MESSAGES} messages.`
+            )
+            .addIntegerOption((option) =>
+               option
+                  .setName("messages")
+                  .setDescription(
+                     `Number of messages to recap (max ${MAX_RECAP_MESSAGES}). Default: 25`
+                  )
+                  .setMinValue(5)
+                  .setMaxValue(MAX_RECAP_MESSAGES)
+                  .setRequired(false)
             )
       ),
 
@@ -43,42 +76,104 @@ export default {
       const subcommand = interaction.options.getSubcommand();
       const channelId = interaction.channelId;
 
-      await interaction.deferReply({
-         flags: [MessageFlags.Ephemeral],
-      });
+      if (subcommand === "recap") {
+         await interaction.deferReply({ ephemeral: false }); // Public defer for recap
+      } else {
+         // watch, unwatch, status
+         await interaction.deferReply({ flags: [MessageFlags.Ephemeral] });
+      }
 
-      if (subcommand === "watch") {
-         const style = interaction.options.getString("style") || "default";
-         if (watchChannel(channelId, style)) {
-            await interaction.editReply(
-               `🎙️ Okay, I'll start commentating on events in this channel with a '${style}' style!`
-            );
-         } else {
-            const currentConfig = getWatchedChannelConfig(channelId);
-            await interaction.editReply(
-               `I'm already commentating on this channel (style: '${currentConfig.style}'). Use \`/commentator unwatch\` to stop watching.`
-            );
+      try {
+         if (subcommand === "watch") {
+            const style = interaction.options.getString("style") || "default";
+            if (watchChannel(channelId, style)) {
+               await interaction.editReply(
+                  `🎙️ Okay, I'll start commentating with style '${style}'!`
+               );
+            } else {
+               const currentConfig = getWatchedChannelConfig(channelId);
+               await interaction.editReply(
+                  `I'm already commentating (style: '${
+                     currentConfig?.style || "unknown"
+                  }'). Use \`/commentator unwatch\` first.`
+               );
+            }
+         } else if (subcommand === "unwatch") {
+            if (unwatchChannel(channelId)) {
+               await interaction.editReply(
+                  "Okay, I will no longer commentate here. 🎤"
+               );
+            } else {
+               await interaction.editReply(
+                  "I wasn't commentating here anyway."
+               );
+            }
+         } else if (subcommand === "status") {
+            const config = getWatchedChannelConfig(channelId);
+            if (config) {
+               await interaction.editReply(
+                  `Watching with style: '${config.style}'.`
+               );
+            } else {
+               await interaction.editReply("Not watching this channel.");
+            }
+         } else if (subcommand === "recap") {
+            const numMessagesToFetch =
+               interaction.options.getInteger("messages") || 25;
+            const messages = await interaction.channel.messages.fetch({
+               limit: numMessagesToFetch,
+            });
+
+            if (messages.size === 0) {
+               await interaction.editReply({
+                  content: "No messages found to recap.",
+               });
+               return;
+            }
+
+            const formattedMessages = [];
+            messages.reverse().forEach((msg) => {
+               if (!msg.author.bot && msg.content) {
+                  formattedMessages.push(
+                     `${msg.author.username}: ${msg.content}`
+                  );
+               }
+            });
+
+            if (formattedMessages.length === 0) {
+               await interaction.editReply({
+                  content: "No suitable user messages found for a recap.",
+               });
+               return;
+            }
+
+            const recapText = await generateStoryRecap(formattedMessages);
+            const recapEmbed = new EmbedBuilder()
+               .setColor(0x5865f2)
+               .setTitle(`📜 Event Recap: The Story So Far...`)
+               .setDescription(truncateText(recapText, MAX_EMBED_DESCRIPTION))
+               .setFooter({
+                  text: `Recap of ~${formattedMessages.length} messages. By Google Gemini.`,
+               })
+               .setTimestamp();
+            await interaction.editReply({ embeds: [recapEmbed] });
          }
-      } else if (subcommand === "unwatch") {
-         if (unwatchChannel(channelId)) {
-            await interaction.editReply(
-               "Okay, I will no longer commentate on events in this channel. 🎤"
-            );
+      } catch (error) {
+         console.error(`Error executing /commentator ${subcommand}:`, error);
+         // Ensure the reply exists before trying to edit, especially if defer failed or was conditional
+         if (!interaction.replied && !interaction.deferred) {
+            // If it was never deferred or replied to, try a fresh reply
+            // This case should be rare with the current deferral logic.
+            await interaction.reply({
+               content: "An unexpected error occurred.",
+               flags: [MessageFlags.Ephemeral],
+            });
          } else {
-            await interaction.editReply(
-               "I wasn't commentating in this channel anyway."
-            );
-         }
-      } else if (subcommand === "status") {
-         const config = getWatchedChannelConfig(channelId);
-         if (config) {
-            await interaction.editReply(
-               `I am currently watching this channel for event commentary with style: '${config.style}'.`
-            );
-         } else {
-            await interaction.editReply(
-               "I am not currently watching this channel for event commentary."
-            );
+            // If deferred or replied, edit the existing reply.
+            await interaction.editReply({
+               content: "An error occurred while processing your request.",
+               flags: [MessageFlags.Ephemeral],
+            });
          }
       }
    },

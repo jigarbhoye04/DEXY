@@ -1,20 +1,24 @@
-import { Client, Collection, Events, GatewayIntentBits } from "discord.js";
+import {
+   Client,
+   GatewayIntentBits,
+   Collection,
+   Events,
+   MessageFlags,
+} from "discord.js";
 import config from "./config/env.js";
 import path from "path";
 import fs from "fs";
 import { fileURLToPath } from "url";
-
 import {
    getActiveDebate,
    addDebateStatement,
    getWatchedChannelConfig,
    updateLastCommentaryTime,
 } from "./state/memoryStore.js";
-import { generateComments } from "./services/geminiService.js";
+import { generateCommentary } from "./services/geminiService.js";
 
-const COMMENTARY_COOLDOWN_MS = 60000; //60s
+const COMMENTARY_COOLDOWN_MS = 30000;
 
-// --- Command Loading ---
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
@@ -34,26 +38,21 @@ const commandFiles = fs
 
 for (const file of commandFiles) {
    const filePath = path.join(commandsPath, file);
-   // Use filePath directly for file URL
-   const command = (await import(`file://${filePath}`)).default; //file url for dynamic imports and all
+   const commandModule = await import(`file://${filePath}`);
+   const command = commandModule.default;
 
    if (command && "data" in command && "execute" in command) {
       client.commands.set(command.data.name, command);
       console.log(`Loaded command: ${command.data.name}`);
    } else {
       console.log(
-         `[Warning] The command at ${filePath} is missing a required "data" or "execute" property.`
+         `[WARNING] Command at ${filePath} missing "data" or "execute".`
       );
    }
 }
 
-// --- Event Handlers ---
 client.once(Events.ClientReady, (c) => {
-   // c is the client instance
-   console.log(`Ready!`);
-   if (c.user) {
-      console.log(`Logged in as ${c.user.tag}`);
-   }
+   console.log(`Ready! Logged in as ${c.user.tag}`);
 });
 
 client.on(Events.InteractionCreate, async (interaction) => {
@@ -61,13 +60,22 @@ client.on(Events.InteractionCreate, async (interaction) => {
 
    const command = interaction.client.commands.get(interaction.commandName);
    if (!command) {
-      console.error(
-         `No command matching ${interaction.commandName} was found.`
-      );
-      await interaction.reply({
-         content: "Error: Command not found.",
-         flags: [MessageFlags.Ephemeral],
-      });
+      console.error(`No command matching ${interaction.commandName} found.`);
+      try {
+         if (interaction.replied || interaction.deferred) {
+            await interaction.followUp({
+               content: "Error: Command not found.",
+               flags: [MessageFlags.Ephemeral],
+            });
+         } else {
+            await interaction.reply({
+               content: "Error: Command not found.",
+               flags: [MessageFlags.Ephemeral],
+            });
+         }
+      } catch (e) {
+         console.error("Error sending 'Command not found' reply:", e);
+      }
       return;
    }
 
@@ -78,84 +86,75 @@ client.on(Events.InteractionCreate, async (interaction) => {
          `Error executing command ${interaction.commandName}:`,
          error
       );
-      // interaction.replied or interaction.deferred should exists before trying to use followUp
-      if (interaction.replied || interaction.deferred) {
-         await interaction.followUp({
-            content: "There was an error while executing this command!",
-            flags: [MessageFlags.Ephemeral],
-         });
-      } else {
-         await interaction.reply({
-            content: "There was an error while executing this command!",
-            flags: [MessageFlags.Ephemeral],
-         });
+      try {
+         if (interaction.replied || interaction.deferred) {
+            await interaction.followUp({
+               content: "There was an error executing this command!",
+               flags: [MessageFlags.Ephemeral],
+            });
+         } else {
+            await interaction.reply({
+               content: "There was an error executing this command!",
+               flags: [MessageFlags.Ephemeral],
+            });
+         }
+      } catch (e) {
+         console.error("Error sending execution error reply:", e);
       }
    }
 });
 
-// event handler for MessageCreate to capture debate statements
 client.on(Events.MessageCreate, async (message) => {
-   // Ignore messages from bots or system messages
    if (message.author.bot || message.system) return;
 
    const channelId = message.channelId;
    const authorId = message.author.id;
 
-   // Check if there's an active debate in this channel
-   const debate = getActiveDebate(channelId);
-
-   if (debate) {
-      // Check if the message author is one of the debaters
-      if (authorId === debate.debater1Id || authorId === debate.debater2Id) {
-         // Record the statement
+   const activeDebate = getActiveDebate(channelId);
+   if (activeDebate) {
+      if (
+         authorId === activeDebate.debater1.id ||
+         authorId === activeDebate.debater2.id
+      ) {
          const recorded = addDebateStatement(
             channelId,
             authorId,
             message.content
          );
          if (recorded) {
-            // react to the message to indicate it's been recorded
             try {
                await message.react("✍️");
             } catch (reactError) {
-               console.warn(
-                  `Failed to react to message ${message.id}: ${reactError.message}. Missing permissions?`
-               );
+               // console.warn(`Failed to react (debate): ${reactError.message}`);
             }
          }
       }
    }
 
-   // --- Event Commentator Handling ---
    const watchedChannelConf = getWatchedChannelConfig(channelId);
    if (watchedChannelConf) {
       const now = Date.now();
       if (
-         now - watchedChannelConf.lastCommentaryTime <
+         now - (watchedChannelConf.lastCommentary || 0) <
          COMMENTARY_COOLDOWN_MS
       ) {
-         // still in cooldown period, skip commentary
          return;
       }
       try {
-         const commentary = await generateComments(
+         const commentary = await generateCommentary(
             message.content,
             message.author.username,
             watchedChannelConf.style
          );
          if (commentary) {
-            await message.channel.send(`${commentary}`);
+            await message.channel.send(`🎙️ **Dexy's Take:** ${commentary}`);
             updateLastCommentaryTime(channelId);
          }
       } catch (error) {
          console.error(
-            `Error generating commentary for message ${message.id}:`,
+            `[Commentator] Failed to generate/send commentary for ${channelId}:`,
             error
          );
-         // await message.channel.send({
-         //    content: "There was an error generating commentary for this message.",
-         //    flags: [MessageFlags.Ephemeral],
-         // });
       }
    }
 });
@@ -164,7 +163,7 @@ client.login(config.discordToken).catch((err) => {
    console.error("Failed to login:", err.message);
    if (err.message.includes("Privileged Intents")) {
       console.error(
-         "Please ensure all necessary Privileged Gateway Intents are enabled for your bot in the Discord Developer Portal."
+         "Ensure Privileged Gateway Intents are enabled in Discord Dev Portal."
       );
    }
    process.exit(1);

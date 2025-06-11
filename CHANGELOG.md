@@ -8,13 +8,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- (Future changes for Phase 6: AI Matchmaker and beyond)
+- **Phase 7: Event Commentator (In Progress)**
+    - `src/services/geminiService.js`:
+        - `generateCommentaryWithGemini(originalMessageContent, messageAuthorUsername, commentaryStyle)` function to generate real-time commentary based on a message and style, with instructions for Gemini to output "NO_COMMENT" if no commentary is warranted. (Task 7.2)
+    - `src/bot.js` (`Events.MessageCreate` handler):
+        - For messages in channels watched by the commentator, calls `generateCommentaryWithGemini`. (Task 7.2)
+        - Posts the AI-generated commentary back to the channel.
+        - Implemented a cooldown mechanism (`COMMENTARY_COOLDOWN_MS`) using `lastCommentary` and `updateLastCommentaryTime` from `memoryStore.js` to prevent spamming.
+    - `src/state/memoryStore.js`:
+        - `updateLastCommentaryTime(channelId)` function to update the timestamp of the last commentary in a watched channel. (Task 7.2)
 
 ### Changed
-- 
+- Updated commentary generation to include a 10-15 word limit.
 
 ### Fixed
-- 
+- Fixed commentary length to adhere to 10-15 word limit.
+- Added error handling for commentary generation failures, ensuring the bot does not crash and provides user feedback.
 
 ---
 ## [0.5.0] - 2025-05-26 - Dev Coach Completion

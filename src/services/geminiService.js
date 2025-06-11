@@ -258,7 +258,7 @@ Explanation:
  * @throws {Error}
  */
 
-async function generateComments(
+async function generateCommentary(
    originalMessageContent,
    messageAuthorUsername,
    commentaryStyle
@@ -318,10 +318,65 @@ NOTE: No more than 10-15 words in your commentary.
    }
 }
 
+/**
+ * Generates a story-style recap of a series of messages using the Gemini API.
+ * @param {Array<string>} messages - An array of message strings (e.g., "Username: content").
+ * @returns {Promise<string|null>} The story-style recap text from Gemini, or null if no recap can be made.
+ * @throws {Error} If the API call fails.
+ */
+async function generateStoryRecap(messages) {
+   if (!messages || messages.length === 0) {
+      return "There are no messages to recap!";
+   }
+
+   const conversationText = messages.join("\n");
+
+   const prompt = `
+You are a skilled storyteller and event recapper.
+Below is a transcript of recent messages from a channel.
+Please create an engaging, story-style recap of these events.
+Highlight key moments, interesting interactions, or the general progression of the conversation.
+Make it sound like a narrative or a short news report about what happened.
+Be creative and make it enjoyable to read.
+Short and concise, but capture the essence of the conversation.
+
+Transcript:
+---
+${conversationText}
+---
+
+Story-Style Recap:
+`;
+
+   try {
+      console.log(
+         `[GeminiService] Generating story recap for ${messages.length} messages.`
+      );
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      let recapText = response.text();
+
+      if (!recapText || recapText.trim() === "") {
+         console.error("[GeminiService] Gemini API returned an empty recap.");
+         return "I tried to create a recap, but it seems I'm at a loss for words right now.";
+      }
+      return recapText.trim();
+   } catch (error) {
+      console.error(
+         "[GeminiService] Error calling Gemini API for story recap:",
+         error
+      );
+      throw new Error(
+         `Failed to generate story recap from Gemini API. Details: ${error.message}`
+      );
+   }
+}
+
 export {
    generateGeminiSummary,
    judgeDebateWithGemini,
    explainCodeWithGemini,
    explainGitHubIssueWithGemini,
-   generateComments,
+   generateCommentary,
+   generateStoryRecap
 };

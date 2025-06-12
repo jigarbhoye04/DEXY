@@ -104,22 +104,13 @@ export default {
                }
             )
             .setTimestamp()
-            .setFooter({ text: "Vibe analyzed by AI" });
+            .setFooter({ text: "Vibe" });
 
          await interaction.editReply({ embeds: [vibeEmbed] });
       } catch (error) {
          console.error("Error in vibecheck command execution:", error);
-         let errorMessage =
-            "Sorry, I encountered an error trying to analyze the vibe.";
-         if (error.message.includes("Invalid AI API Key")) {
-            errorMessage = "Issue with AI API Key. Admin notified.";
-         } else if (error.message.includes("Failed to analyze sentiment")) {
-            errorMessage = `Could not get a sentiment analysis. ${error.message}`;
-         } else if (error.code === 50013) {
-            errorMessage = "I lack permissions to read message history here.";
-         }
          await interaction.editReply({
-            content: errorMessage,
+            content: "An error occurred.",
             flags: [MessageFlags.Ephemeral],
          });
       }

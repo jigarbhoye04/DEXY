@@ -340,6 +340,8 @@ Make it sound like a narrative or a short news report about what happened.
 Be creative and make it enjoyable to read.
 Short and concise, but capture the essence of the conversation.
 
+NOTE: Simple language, no technical jargon, and keep it under 100 words. 
+
 Transcript:
 ---
 ${conversationText}

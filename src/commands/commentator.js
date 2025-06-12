@@ -153,7 +153,7 @@ export default {
                .setTitle(`📜 Event Recap: The Story So Far...`)
                .setDescription(truncateText(recapText, MAX_EMBED_DESCRIPTION))
                .setFooter({
-                  text: `Recap of ~${formattedMessages.length} messages. By Google Gemini.`,
+                  text: `Recap of ~${formattedMessages.length} messages.`,
                })
                .setTimestamp();
             await interaction.editReply({ embeds: [recapEmbed] });

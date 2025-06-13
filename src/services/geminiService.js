@@ -374,11 +374,50 @@ Story-Style Recap:
    }
 }
 
+/**
+ * Answers a general knowledge question using the Gemini API.
+ * @param {string} question - The user's question.
+ * @returns {Promise<string>} The answer text from Gemini.
+ * @throws {Error} If the API call fails or returns no text.
+ */
+async function askQuestion(question) {
+    if (!question || question.trim() === "") {
+        return "No question provided.";
+    }
+
+    const prompt = `
+You are a helpful AI assistant. Provide a concise and factual answer to the following question.
+If the question is unclear, or you cannot provide a factual answer, please state that you cannot answer it.
+Do not make up information.
+
+Question: "${question}"
+
+Answer:
+`;
+
+    try {
+        console.log(`[GeminiService] Answering question: ${question.substring(0,100)}...`);
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const answerText = response.text();
+
+        if (!answerText || answerText.trim() === "") {
+            console.error("[GeminiService] Gemini API returned an empty answer for the question.");
+            throw new Error("Gemini API returned an empty or invalid answer.");
+        }
+        return answerText.trim();
+    } catch (error) {
+        console.error("[GeminiService] Error calling Gemini API for Q&A:", error);
+        throw new Error(`Failed to get an answer from Gemini API. Details: ${error.message}`);
+    }
+}
+
 export {
    generateGeminiSummary,
    judgeDebateWithGemini,
    explainCodeWithGemini,
    explainGitHubIssueWithGemini,
    generateCommentary,
-   generateStoryRecap
+   generateStoryRecap,
+   askQuestion
 };

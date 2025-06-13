@@ -8,6 +8,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- **Module 1: Knowledge & Quick Tasks (In Progress)**
+    - **`/ask` Command (General Q&A):**
+        - `src/commands/knowledge.js`: Created with `/ask` slash command definition, taking a `question` option. (Task 1.1.1)
+        - `src/services/geminiService.js`: Added `askQuestionWithGemini(question)` function to prompt Gemini for concise, factual answers. (Task 1.1.2)
+        - `/ask` command now integrates with `geminiService` to provide AI-generated answers in a public embed. Includes truncation for long questions/answers. (Task 1.1.3)
+
+### Changed
+- 
+
+### Fixed
+- Fixed issue with question length validation in `/ask` command.
+
+### Added
 - **Phase 7: Event Commentator (In Progress)**
     - `src/services/geminiService.js`:
         - `generateCommentaryWithGemini(originalMessageContent, messageAuthorUsername, commentaryStyle)` function to generate real-time commentary based on a message and style, with instructions for Gemini to output "NO_COMMENT" if no commentary is warranted. (Task 7.2)

@@ -23,9 +23,29 @@ export default {
             .setRequired(true)
             .setMinLength(5)
             .setMaxLength(500)
+      )
+      .addSubcommand((subcommand) =>
+         subcommand
+            .setName("define")
+            .setDescription("Defines the things that user asks.")
+            .addStringOption((option) =>
+               option
+                  .setName("term")
+                  .setDescription("The term you want to define.")
+                  .setRequired(true)
+                  .setMinLength(5)
+                  .setMaxLength(400)
+            )
       ),
    async execute(interaction) {
+      const subcommand = interaction.options.getSubcommand();
       const question = interaction.options.getString("question");
+      const term = interaction.options.getString("term");
+
+      if (subcommand === "define") {
+         await interaction.deferReply({ ephemeral: false });
+      }
+
       if (!question || question.length < 5 || question.length > 500) {
          return interaction.reply({
             content:
@@ -36,6 +56,15 @@ export default {
       await interaction.deferReply({ ephemeral: false });
 
       try {
+         if (subcommand === "define") {
+            const defineResult = defineTermWithGemini(term);
+            const resEmbed = new EmbedBuilder()
+               .setColor(0x3498db)
+               .setTitle(`${truncateText(term)}`)
+               .setDescription(defineResult);
+
+            await interaction.editReply({ embeds: [resEmbed] });
+         }
          const answer = await askQuestion(question);
 
          const answerEmbed = new EmbedBuilder()

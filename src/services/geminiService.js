@@ -375,40 +375,41 @@ Story-Style Recap:
 }
 
 /**
- * Answers a general knowledge question using the Gemini API.
- * @param {string} question - The user's question.
- * @returns {Promise<string>} The answer text from Gemini.
+ * Generates an alternate timeline based on a user's "what if" scenario using the Gemini API.
+ * @param {string} scenario - The user's "what if" scenario.
+ * @returns {Promise<string>} The generated alternate timeline text.
  * @throws {Error} If the API call fails or returns no text.
  */
-async function askQuestion(question) {
-    if (!question || question.trim() === "") {
-        return "No question provided.";
+async function generateAlternateTimeline(scenario) {
+    if (!scenario || scenario.trim() === "") {
+        return "No scenario provided to simulate.";
     }
 
     const prompt = `
-You are a helpful AI assistant. Provide a concise and factual answer to the following question.
-If the question is unclear, or you cannot provide a factual answer, please state that you cannot answer it.
-Do not make up information.
+You are a creative historian and speculative fiction writer.
+A user has proposed a "what if" scenario. Explore the plausible (or creatively interesting) ramifications of this change throughout history, leading up to a speculative present day in this alternate timeline.
 
-Question: "${question}"
+User's Scenario: "${scenario}"
 
-Answer:
+Based on this, generate a narrative describing the key divergences and major developments in this alternate timeline. Paint a vivid picture, but keep it story-like and engaging and narrative-driven.
+
+NOTE: No more than MAX_TIMELINE_LENGTH of 1000 characters. and USE EMOJI WHERE APPROPRIATE(not more but in less amount). and use simple alternative history language.
 `;
 
     try {
-        console.log(`[GeminiService] Answering question: ${question.substring(0,100)}...`);
+        console.log(`[GeminiService] Generating alternate timeline for: ${scenario.substring(0, 100)}...`);
         const result = await model.generateContent(prompt);
         const response = await result.response;
-        const answerText = response.text();
+        const timelineText = response.text();
 
-        if (!answerText || answerText.trim() === "") {
-            console.error("[GeminiService] Gemini API returned an empty answer for the question.");
-            throw new Error("Gemini API returned an empty or invalid answer.");
+        if (!timelineText || timelineText.trim() === "") {
+            console.error("[GeminiService] Gemini API returned an empty timeline for the scenario.");
+            throw new Error("Gemini API returned an empty or invalid timeline response.");
         }
-        return answerText.trim();
+        return timelineText.trim();
     } catch (error) {
-        console.error("[GeminiService] Error calling Gemini API for Q&A:", error);
-        throw new Error(`Failed to get an answer from Gemini API. Details: ${error.message}`);
+        console.error("[GeminiService] Error calling Gemini API for alternate timeline:", error);
+        throw new Error(`Failed to generate alternate timeline from Gemini API. Details: ${error.message}`);
     }
 }
 
@@ -419,5 +420,5 @@ export {
    explainGitHubIssueWithGemini,
    generateCommentary,
    generateStoryRecap,
-   askQuestion
+   generateAlternateTimeline
 };
